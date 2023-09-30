@@ -3,6 +3,11 @@ if vim.g.loaded_cursorword then
 end
 vim.g.loaded_cursorword = true
 
+local enabled_ts_types = {
+  "identifier",
+  "shorthand_property_identifier_pattern",
+}
+
 local fn = vim.fn
 local api = vim.api
 
@@ -24,7 +29,10 @@ local function matchstr(...)
 end
 
 local function matchadd()
-  if vim.tbl_contains(vim.g.cursorword_disable_filetypes or {}, vim.bo.filetype) then
+  if
+    vim.tbl_contains(vim.g.cursorword_disable_filetypes or {}, vim.bo.filetype)
+    or vim.api.nvim_buf_line_count(0) > 1000
+  then
     return
   end
 
@@ -44,10 +52,15 @@ local function matchadd()
 
   matchdelete()
 
+  local ok, current_node = pcall(vim.treesitter.get_node)
+
+  -- print([[[nvim-cursorword.lua:50] -- current_node: ]] .. vim.inspect(current_node:type()))
+
   if
     #cursorword < (vim.g.cursorword_min_width or 3)
     or #cursorword > (vim.g.cursorword_max_width or 50)
     or cursorword:find("[\192-\255]+")
+    or (ok and current_node and not vim.tbl_contains(enabled_ts_types, current_node:type()))
   then
     return
   end
